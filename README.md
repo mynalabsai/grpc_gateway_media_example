@@ -4,7 +4,7 @@ Example of service thar provides both HTTP API and gRPC, common logic wrapper, a
 
 ## Usage
 
-Launch
+Run
 ```bash
 go run main.go
 ```
