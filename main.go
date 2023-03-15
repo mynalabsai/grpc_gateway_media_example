@@ -39,7 +39,7 @@ func launchServer(server ServerInterface, port int) {
 	}
 }
 
-func GetFormFile(r *http.Request, name string) ([]byte, error) {
+func getFormFile(r *http.Request, name string) ([]byte, error) {
 	file, _, err := r.FormFile(name)
 	if err != nil {
 		return nil, fmt.Errorf("not found")
@@ -53,17 +53,17 @@ func GetFormFile(r *http.Request, name string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func EncodeAndSubstitute(jsonData map[string]interface{}, r *http.Request, res *map[string]interface{}) error {
+func substituteMacros(jsonData map[string]interface{}, r *http.Request, res *map[string]interface{}) error {
 	for name, val := range jsonData {
 		if inner, isObject := val.(map[string]interface{}); isObject {
 			(*res)[name] = map[string]interface{}{}
 			resInner, _ := (*res)[name].(map[string]interface{})
-			err := EncodeAndSubstitute(inner, r, &resInner)
+			err := substituteMacros(inner, r, &resInner)
 			if err != nil {
 				return err
 			}
 		} else if valStr, ok := val.(string); ok && strings.HasPrefix(valStr, "$") {
-			data, err := GetFormFile(r, valStr)
+			data, err := getFormFile(r, valStr)
 			if err != nil {
 				return fmt.Errorf("can not get file %s", val.(string))
 			}
@@ -76,7 +76,7 @@ func EncodeAndSubstitute(jsonData map[string]interface{}, r *http.Request, res *
 }
 
 func createRequestFromMultiPart(r *http.Request) (*http.Request, error) {
-	json_data, err := GetFormFile(r, "data")
+	json_data, err := getFormFile(r, "data")
 	if err != nil {
 		fmt.Printf("%v", err)
 		return nil, err
@@ -85,7 +85,7 @@ func createRequestFromMultiPart(r *http.Request) (*http.Request, error) {
 	var decoded map[string]interface{}
 	encodedAndSubstituted := map[string]interface{}{}
 	json.Unmarshal(rawJson, &decoded)
-	err = EncodeAndSubstitute(decoded, r, &encodedAndSubstituted)
+	err = substituteMacros(decoded, r, &encodedAndSubstituted)
 	str, _ := json.Marshal(encodedAndSubstituted)
 	if err != nil {
 		return nil, err
