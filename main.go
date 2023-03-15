@@ -53,12 +53,12 @@ func getFormFile(r *http.Request, name string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func substituteMacros(jsonData map[string]interface{}, r *http.Request, res *map[string]interface{}) error {
+func expandMacros(jsonData map[string]interface{}, r *http.Request, res *map[string]interface{}) error {
 	for name, val := range jsonData {
 		if inner, isObject := val.(map[string]interface{}); isObject {
 			(*res)[name] = map[string]interface{}{}
 			resInner, _ := (*res)[name].(map[string]interface{})
-			err := substituteMacros(inner, r, &resInner)
+			err := expandMacros(inner, r, &resInner)
 			if err != nil {
 				return err
 			}
@@ -83,10 +83,10 @@ func createRequestFromMultiPart(r *http.Request) (*http.Request, error) {
 	}
 	rawJson := json.RawMessage(json_data)
 	var decoded map[string]interface{}
-	encodedAndSubstituted := map[string]interface{}{}
+	expanded := map[string]interface{}{}
 	json.Unmarshal(rawJson, &decoded)
-	err = substituteMacros(decoded, r, &encodedAndSubstituted)
-	str, _ := json.Marshal(encodedAndSubstituted)
+	err = expandMacros(decoded, r, &expanded)
+	str, _ := json.Marshal(expanded)
 	if err != nil {
 		return nil, err
 	}
